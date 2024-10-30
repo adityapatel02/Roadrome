@@ -1,68 +1,27 @@
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
-const review = require("./review.js");
-const { string } = require("joi");
+const express = require("express");
+const router = express.Router();
+const {isLoggedIn, isOwner} = require("../middleware.js");
+const { index, newListing, Edit, Show, Update, newListingRoute, destroy } = require("../controller/listings.js");
+const multer  = require('multer');
+const  storage  = require("../cloud_config.js");
+const upload = multer({storage});
 
-// Validator for the entered url for image
-function isValidURL(url) {
-  try {
-    new URL(url);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
+router
+   .route("/")
+   .get(index)  //Index
+   .post(isLoggedIn,upload.single('image'),newListing); // Create Route
 
-const listingSchema = new Schema({
-  title: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-  },
-  image: {
-    url:String,
-    filename:String,
-      
-    // set: v => (v === "" ? "https://shorturl.at/YrYNA" : v), // By default value of img if not entered
-    // validate: {
-    //   validator: isValidURL,
-    //   message: props => `${props.value} is not a valid URL for image`,
-    // },
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: [0, 'Price must be positive'], // Add a min validator
-    validate: {
-      validator: Number.isInteger,
-      message: 'Price must be an integer'
-    }
-  },
-  location: {
-    type: String,
-    required: true,
-  },
-  country: {
-    type: String,
-  },
-  reviews:[{
-    type:Schema.Types.ObjectId,
-    ref:"review",                //from review model.
-  }],
-  owner:{
-    type:Schema.Types.ObjectId,
-    ref:"User",
-  }
-});
 
-listingSchema.post("findOneAndDelete",async (listing)=>{
-  if(listing){
-    await review.deleteMany({_id:{$in:listing.reviews}});
-  }
-})
+//New Route
+router.get("/new",isLoggedIn,newListingRoute)
+  
+//Edit Route
+router.get("/:id/edit",isLoggedIn,isOwner,Edit);
 
-const Listing = mongoose.model("Listing", listingSchema);
+router
+    .route("/:id")
+    .get(Show)      //Show Route
+    .patch(isLoggedIn, isOwner,upload.single('image'),Update)   //Update Route
+    .delete(isLoggedIn, isOwner,destroy);  //Delete Route
 
-module.exports = Listing;
+module.exports = router;

@@ -1,36 +1,14 @@
-const Listing = require("../models/listing.js");
-const review = require("../models/review.js");
-const wrapAsync = require("../utils/wrapAsync");
+const express = require("express");
+const router = express.Router({mergeParams:true});
+// IMP:- Not forget to add mergeparams true, because in app.js parent route for this file, we are setting a var, to get the var - :id we need to add mergerparams:true to get the value of :id in this file.
+const { isLoggedIn, isreviewAuthor } = require("../middleware.js");
+const {create, destroy} = require("../controller/reviews.js");
+
 
 //Reviews create Route
-let create = wrapAsync(async (req,res)=>{
-    let id=req.params.id;
-    console.log(req.params);
-    let listing= await Listing.findById(id);
-    let newReview = new review({
-        comment:req.body.reviewComment,
-        rating: req.body.reviewRating,
-        author:req.user._id,
-    });
-    newReview.save();
-    listing.reviews.push(newReview);
-    listing.save();
-    console.log(newReview);
-    req.flash("success","Review Saved!");
-    res.redirect(`/listings/${listing.id}`);
-})
+router.post("/",isLoggedIn,create);
 
 // Reviews Delete Route
-let destroy = wrapAsync(async (req,res)=>{
-    let id=req.params.id;
-    let reviewId = req.params.review_id;
-    await review.findByIdAndDelete(reviewId);
-    await Listing.findByIdAndUpdate(id,{$pull:{reviews:reviewId}});   
-    req.flash("success","Review Deleted!");
-    res.redirect(`/listings/${id}`);
-})
+router.delete("/:review_id",isLoggedIn,isreviewAuthor,destroy);
 
-module.exports = {
-    create:create,
-    destroy:destroy,
-}
+module.exports = router;
